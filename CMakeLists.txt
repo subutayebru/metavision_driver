@@ -34,6 +34,7 @@ else()
 endif()
 
 if(ROS_VERSION EQUAL "2")
+  find_package(event_camera_msgs REQUIRED)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ROS2.cmake)
 elseif(ROS_VERSION EQUAL "1")
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ROS1.cmake)

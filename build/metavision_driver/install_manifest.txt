@@ -1,0 +1,8 @@
+/home/es_admin/metavision_driver/install/metavision_driver/share/metavision_driver//launch/driver_node.launch.py
+/home/es_admin/metavision_driver/install/metavision_driver/share/metavision_driver//launch/stereo_driver.launch.py
+/home/es_admin/metavision_driver/install/metavision_driver/share/metavision_driver//launch/start_recording.launch.py
+/home/es_admin/metavision_driver/install/metavision_driver/share/metavision_driver//launch/sync_test.launch.py
+/home/es_admin/metavision_driver/install/metavision_driver/share/metavision_driver//launch/driver_composition.launch.py
+/home/es_admin/metavision_driver/install/metavision_driver/share/metavision_driver//launch/recording_driver.launch.py
+/home/es_admin/metavision_driver/install/metavision_driver/share/metavision_driver//launch/recording_stereo_driver.launch.py
+/home/es_admin/metavision_driver/install/metavision_driver/share/metavision_driver//launch/recorder_node.launch.py

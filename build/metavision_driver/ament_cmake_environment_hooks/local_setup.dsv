@@ -1,0 +1,2 @@
+source;share/metavision_driver/environment/ament_prefix_path.sh
+source;share/metavision_driver/environment/path.sh

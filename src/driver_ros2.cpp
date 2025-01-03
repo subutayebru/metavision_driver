@@ -17,6 +17,7 @@
 
 #include <chrono>
 #include <event_camera_msgs/msg/event_packet.hpp>
+#include <event_camera_msgs/msg/event_array.hpp>
 #include <map>
 #include <rclcpp/parameter_events_filter.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
@@ -51,7 +52,11 @@ DriverROS2::DriverROS2(const rclcpp::NodeOptions & options)
   int qs;
   this->get_parameter_or("send_queue_size", qs, 1000);
   eventPub_ = this->create_publisher<EventPacketMsg>(
-    "~/events", rclcpp::QoS(rclcpp::KeepLast(qs)).best_effort().durability_volatile());
+    "/event_packet", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort().durability_volatile());
+  eventArrayPub_ = this->create_publisher<event_camera_msgs::msg::EventArray>(
+    "/event_array", rclcpp::SensorDataQoS());
+
+
 
   if (wrapper_->getSyncMode() == "primary") {
     // delay primary until secondary is up and running
@@ -378,6 +383,7 @@ void DriverROS2::configureWrapper(const std::string & name)
 
 void DriverROS2::rawDataCallback(uint64_t t, const uint8_t * start, const uint8_t * end)
 {
+  
   if (eventPub_->get_subscription_count() > 0) {
     if (!msg_) {
       msg_.reset(new EventPacketMsg());
@@ -390,15 +396,17 @@ void DriverROS2::rawDataCallback(uint64_t t, const uint8_t * start, const uint8_
       msg_->header.stamp = rclcpp::Time(t, RCL_SYSTEM_TIME);
       msg_->events.reserve(reserveSize_);
     }
+    
     const size_t n = end - start;
     auto & events = msg_->events;
     const size_t oldSize = events.size();
     resize_hack(events, oldSize + n);
     memcpy(reinterpret_cast<void *>(events.data() + oldSize), start, n);
-
+    RCLCPP_INFO(this->get_logger(), "Publishing EventPacket with %zu bytes", msg_->events.size());
+    RCLCPP_INFO(this->get_logger(), "rawDataCallback triggered");
     if (t - lastMessageTime_ > messageThresholdTime_ || events.size() > messageThresholdSize_) {
       reserveSize_ = std::max(reserveSize_, events.size());
-      eventPub_->publish(std::move(msg_));
+      //eventPub_->publish(std::move(msg_));
       lastMessageTime_ = t;
       wrapper_->updateBytesSent(events.size());
       wrapper_->updateMsgsSent(1);
@@ -411,25 +419,29 @@ void DriverROS2::rawDataCallback(uint64_t t, const uint8_t * start, const uint8_
 }
 
 void DriverROS2::eventCDCallback(
-  uint64_t, const Metavision::EventCD * start, const Metavision::EventCD * end)
-{
-  // This callback will only be exercised during startup on the
-  // secondary until good data is available. The moment good time stamps
-  // are available we disable decoding and use the raw interface.
-  bool hasZeroTime(false);
-  for (auto e = start; e != end; e++) {
-    if (e->t == 0) {
-      hasZeroTime = true;
-      break;
-    }
-  }
-  if (!hasZeroTime) {
-    // finally the primary is up, no longer need the expensive decoding
-    LOG_INFO("secondary sees primary up!");
-    wrapper_->setDecodingEvents(false);
-  }
-}
+    uint64_t timestamp, const Metavision::EventCD * start, const Metavision::EventCD * end) {
+  auto msg = event_camera_msgs::msg::EventArray();
+  msg.header.stamp.sec = timestamp / 1000000000ULL;        // Convert timestamp to seconds
+  msg.header.stamp.nanosec = timestamp % 1000000000ULL;    // Convert to nanoseconds
+  msg.header.frame_id = "camera_frame";                   // Replace with your frame ID
+  msg.height = 480;                                       // Replace with actual height
+  msg.width = 640;                                        // Replace with actual width
 
-}  // namespace metavision_driver
+  for (const Metavision::EventCD * it = start; it != end; ++it) {
+    event_camera_msgs::msg::Event ev;
+    ev.x = it->x;
+    ev.y = it->y;
+    ev.ts.sec = it->t / 1000000ULL;         // Convert microseconds to seconds
+    ev.ts.nanosec = (it->t % 1000000ULL) * 1000ULL;  // Convert microseconds to nanoseconds
+    ev.polarity = it->p;
+    msg.events.push_back(ev);
+  }
+  RCLCPP_INFO(this->get_logger(), "eventCDCallback triggered with %ld events", end - start);
+  RCLCPP_INFO(this->get_logger(), "Publishing EventArray with %zu events", msg.events.size());
+
+  eventArrayPub_->publish(msg);
+  
+ }
+}
 
 RCLCPP_COMPONENTS_REGISTER_NODE(metavision_driver::DriverROS2)

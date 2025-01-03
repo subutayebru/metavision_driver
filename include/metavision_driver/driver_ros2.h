@@ -17,6 +17,7 @@
 #define METAVISION_DRIVER__DRIVER_ROS2_H_
 
 #include <event_camera_msgs/msg/event_packet.hpp>
+#include <event_camera_msgs/msg/event_array.hpp>
 #include <map>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
@@ -46,6 +47,9 @@ public:
   void eventCDCallback(
     uint64_t t, const Metavision::EventCD * begin, const Metavision::EventCD * end) override;
   // ---------------- end of inherited  -----------
+  
+  void publishEventArray(uint64_t timestamp, const Metavision::EventCD* begin, const Metavision::EventCD* end);
+
 
 private:
   // service call to dump biases
@@ -80,6 +84,10 @@ private:
   size_t messageThresholdSize_{0};    // threshold size for sending message
   EventPacketMsg::UniquePtr msg_;
   rclcpp::Publisher<EventPacketMsg>::SharedPtr eventPub_;
+  //rclcpp::Publisher<event_camera_msgs::msg::EventArray>::SharedPtr event_array_publisher_;
+  rclcpp::Publisher<event_camera_msgs::msg::EventArray>::SharedPtr eventArrayPub_;
+
+
   // ------ related to sync
   rclcpp::Service<Trigger>::SharedPtr secondaryReadyServer_;
   rclcpp::TimerBase::SharedPtr oneOffTimer_;
