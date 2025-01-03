@@ -383,7 +383,6 @@ void DriverROS2::configureWrapper(const std::string & name)
 
 void DriverROS2::rawDataCallback(uint64_t t, const uint8_t * start, const uint8_t * end)
 {
-  
   if (eventPub_->get_subscription_count() > 0) {
     if (!msg_) {
       msg_.reset(new EventPacketMsg());
@@ -396,17 +395,22 @@ void DriverROS2::rawDataCallback(uint64_t t, const uint8_t * start, const uint8_
       msg_->header.stamp = rclcpp::Time(t, RCL_SYSTEM_TIME);
       msg_->events.reserve(reserveSize_);
     }
-    
+
+    // Clear events before adding new data
+    msg_->events.clear();
+
     const size_t n = end - start;
     auto & events = msg_->events;
     const size_t oldSize = events.size();
     resize_hack(events, oldSize + n);
     memcpy(reinterpret_cast<void *>(events.data() + oldSize), start, n);
-    RCLCPP_INFO(this->get_logger(), "Publishing EventPacket with %zu bytes", msg_->events.size());
-    RCLCPP_INFO(this->get_logger(), "rawDataCallback triggered");
+
+    // Debugging message after population
+    RCLCPP_INFO(this->get_logger(), "Publishing EventPacket with %zu events", events.size());
+
     if (t - lastMessageTime_ > messageThresholdTime_ || events.size() > messageThresholdSize_) {
       reserveSize_ = std::max(reserveSize_, events.size());
-      //eventPub_->publish(std::move(msg_));
+      eventPub_->publish(std::move(msg_));
       lastMessageTime_ = t;
       wrapper_->updateBytesSent(events.size());
       wrapper_->updateMsgsSent(1);
